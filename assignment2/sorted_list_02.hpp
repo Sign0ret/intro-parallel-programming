@@ -1,4 +1,4 @@
-// Coarse Grained Locking using std::mutex.
+// Fine Grained Locking using std::mutex.
 // This means we are implementing a main lock for each node?
 #ifndef lacpp_sorted_list_hpp
 #define lacpp_sorted_list_hpp lacpp_sorted_list_hpp
@@ -22,6 +22,7 @@ struct node {
 template<typename T>
 class sorted_list {
 	node<T>* first = nullptr;
+    std::mutex hold;
 
 	public:
 		/* default implementations:
@@ -46,67 +47,90 @@ class sorted_list {
 		}
 		/* insert v into the list */
 		void insert(T v) {
-            /* first find position */
-			node<T>* pred = nullptr;
-			node<T>* succ = first;
-			while(succ != nullptr && succ->value < v) {
-                pred = succ;
-				succ = succ->next;
-			}
-			while (!pred->hold.try_lock()) {
-                while(succ != nullptr && succ->value < v) {
-                    pred = succ;
-                    succ = succ->next;
-                }
-            }
-			/* construct new node */
-			node<T>* current = new node<T>();
-			current->value = v;
-			/* insert new node between pred and succ */
-			current->next = succ;
-			if(pred == nullptr) {
-				first = current;
-			} else {
-				pred->next = current;
-			}
-            pred->hold.unlock();
-		}
+            while (true) {
+                node<T>* pred = nullptr;
+                node<T>* curr = first;
 
-		void remove(T v) {
-			/* first find position */
-			node<T>* pred = nullptr;
-			node<T>* current = first;
-			while(current != nullptr && current->value < v) {
-				pred = current;
-				current = current->next;
-			}
-			if(current == nullptr || current->value != v) {
-				/* v not found */
-				return;
-			}
-			/* remove current */
-			if(pred == nullptr) { 
-                while (!first->hold->next.try_lock()) {
-                    sleep_for(2);
+                // Lock the head's mutex if needed, here assuming first node mutex is used
+                if (curr) curr->hold.lock();
+
+                // Traverse list locking next node before unlocking previous to maintain order
+                while (curr != nullptr && curr->value < v) {
+                    if (pred) pred->hold.unlock();
+                    pred = curr;
+                    curr = curr->next;
+                    if (curr) curr->hold.lock();
                 }
-				first = current->next;
-                first->hold.unlock();
-			} else {
-                while (!pred->hold.try_lock()) {
-                    sleep_for(2);
+
+                // At this point curr is either nullptr or node with value >= v
+                // pred might be nullptr if inserting at head
+
+                // Create new node and lock it
+                node<T>* new_node = new node<T>();
+                new_node->value = v;
+                new_node->next = curr;
+                // No need to lock new_node here as it's not accessible by other threads yet
+
+                if (pred == nullptr) {
+                    // Inserting at the head
+                    // Lock main list mutex to safely update head pointer or rely on other synchronization
+                    // Or we assume no separate list lock and modify first directly
+                    first = new_node;
+                } else {
+                    pred->next = new_node;
+                    pred->hold.unlock();
                 }
-                while (!succ->next->hold.try_lock()) {
-                    sleep_for(2);
+
+                if (curr) curr->hold.unlock();
+
+                break;
+            }
+        }
+
+        void remove(T v) {
+            while (true) {
+                node<T>* pred = nullptr;
+                node<T>* curr = first;
+
+                // Lock the first node mutex (if exists)
+                if (curr) curr->hold.lock();
+
+                while (curr != nullptr && curr->value < v) {
+                    if (pred) pred->hold.unlock();
+                    pred = curr;
+                    curr = curr->next;
+                    if (curr) curr->hold.lock();
                 }
-				pred->next = current->next;
-                pred->hold.unlock();
-                pred->next.hold.unlock();
-			}
-			delete current;
-		}
+
+                if (curr == nullptr || curr->value != v) {
+                    // Value not found, unlock any held mutexes
+                    if (pred) pred->hold.unlock();
+                    if (curr) curr->hold.unlock();
+                    return;
+                }
+
+                // Now curr holds the node with value == v
+
+                if (pred == nullptr) {
+                    // Removing head node
+                    first = curr->next;
+                    curr->hold.unlock();
+                    delete curr;
+                } else {
+                    pred->next = curr->next;
+                    curr->hold.unlock();
+                    pred->hold.unlock();
+                    delete curr;
+                }
+
+                break;
+            }
+        }
+
 
 		/* count elements with value v in the list */
 		std::size_t count(T v) {
+            std::lock_guard<std::mutex> lock(hold);
 			std::size_t cnt = 0;
 			/* first go to value v */
 			node<T>* current = first;
