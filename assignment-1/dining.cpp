@@ -17,10 +17,16 @@ void philosopher(int n, std::mutex *left, std::mutex *right)
       std::cout << "Philosopher " << n << " picked up her left fork." << std::endl;
       out.unlock();
 
-      right->lock();
-      out.lock();
-      std::cout << "Philosopher " << n << " picked up her right fork." << std::endl;
-      out.unlock();
+      if (right->try_lock()) {
+        out.lock();
+        std::cout << "Philosopher " << n << " can pick right fork." << std::endl;
+        out.unlock();
+      } else {
+        out.lock();
+        std::cout << "Philosopher " << n << " is putting down her left fork." << std::endl;
+        out.unlock();
+        left->unlock();
+      }
 
       out.lock();
       std::cout << "Philosopher " << n << " is eating." << std::endl;
