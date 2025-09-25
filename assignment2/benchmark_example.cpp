@@ -5,7 +5,7 @@
 #include <string>
 
 #include "benchmark.hpp"
-#include "sorted_list_01.hpp"
+#include "sorted_list_05.hpp"
 
 static const int DATA_VALUE_RANGE_MIN = 0;
 static const int DATA_VALUE_RANGE_MAX = 256;

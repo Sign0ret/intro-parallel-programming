@@ -1,7 +1,7 @@
-// Coarse Grained Locking using std::mutex.
+// Coarse Grained Locking using TATAS.
 #ifndef lacpp_sorted_list_hpp
 #define lacpp_sorted_list_hpp lacpp_sorted_list_hpp
-#include <mutex>
+#include "locks.hpp"
 
 /* a sorted list implementation by David Klaftenegger, 2015
  * please report bugs or suggest improvements to david.klaftenegger@it.uu.se
@@ -20,7 +20,7 @@ struct node {
 template<typename T>
 class sorted_list {
 	node<T>* first = nullptr;
-    std::mutex hold;
+    TATASLock hold;
 
 	public:
 		/* default implementations:
@@ -45,7 +45,7 @@ class sorted_list {
 		}
 		/* insert v into the list */
 		void insert(T v) {
-            std::lock_guard<std::mutex> lock(hold);
+            lock_guard_custom<TATASLock> lock(hold);
 			/* first find position */
 			node<T>* pred = nullptr;
 			node<T>* succ = first;
@@ -68,7 +68,7 @@ class sorted_list {
 		}
 
 		void remove(T v) {
-            std::lock_guard<std::mutex> lock(hold);
+            lock_guard_custom<TATASLock> lock(hold);
 			/* first find position */
 			node<T>* pred = nullptr;
 			node<T>* current = first;
@@ -91,7 +91,7 @@ class sorted_list {
 
 		/* count elements with value v in the list */
 		std::size_t count(T v) {
-            std::lock_guard<std::mutex> lock(hold);
+            lock_guard_custom<TATASLock> lock(hold);
 			std::size_t cnt = 0;
 			/* first go to value v */
 			node<T>* current = first;

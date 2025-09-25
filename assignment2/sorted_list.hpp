@@ -1,16 +1,27 @@
 #ifndef lacpp_sorted_list_hpp
 #define lacpp_sorted_list_hpp lacpp_sorted_list_hpp
+#include <mutex>
+
+using namespace std;
 
 /* a sorted list implementation by David Klaftenegger, 2015
  * please report bugs or suggest improvements to david.klaftenegger@it.uu.se
  */
+
+
+
+// IMPLEMET TATAS
+
 
 /* struct for list nodes */
 template<typename T>
 struct node {
 	T value;
 	node<T>* next;
+	mutex modifing;
 };
+
+
 
 /* non-concurrent sorted singly-linked list */
 template<typename T>

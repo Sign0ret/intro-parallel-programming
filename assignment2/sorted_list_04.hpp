@@ -1,7 +1,8 @@
-// Fine Grained Locking using std::mutex.
+// Fine Grained Locking using TATAS.
 #ifndef lacpp_sorted_list_hpp
 #define lacpp_sorted_list_hpp lacpp_sorted_list_hpp
-#include <mutex>
+#include "locks.hpp"
+
 
 /* a sorted list implementation by David Klaftenegger, 2015
  * please report bugs or suggest improvements to david.klaftenegger@it.uu.se
@@ -9,15 +10,16 @@
 
 
 /* struct for list nodes */
+
 template<typename T>
 struct node {
     T value;
     node<T>* next;
-    // Each node has its own std::mutex for fine-grained locking.
-    std::mutex hold;
+    // Each node has its own TATAS lock for fine-grained locking.
+    TATASLock hold;
 };
 
-/* concurrent sorted singly-linked list with fine-grained std::mutex locking */
+/* concurrent sorted singly-linked list with fine-grained TATAS locking */
 template<typename T>
 class sorted_list {
 private:
@@ -26,19 +28,24 @@ private:
     node<T>* head_node;
 
 public:
+    /* default implementations:
+     * default constructor
+     * copy constructor (note: shallow copy)
+     * move constructor
+     * copy assignment operator (note: shallow copy)
+     * move assignment operator
+     *
+     * The first is required due to the others,
+     * which are explicitly listed due to the rule of five.
+     */
     sorted_list() {
         head_node = new node<T>();
         head_node->next = nullptr;
     }
-    
-    // Defaulted constructors and operators for the class,
-    // assuming they handle member `head_node` correctly if needed.
     sorted_list(const sorted_list<T>& other) = default;
     sorted_list(sorted_list<T>&& other) = default;
     sorted_list<T>& operator=(const sorted_list<T>& other) = default;
     sorted_list<T>& operator=(sorted_list<T>&& other) = default;
-
-    // Explicitly handle destructor to avoid memory leaks.
     ~sorted_list() {
         node<T>* current = head_node->next;
         while(current != nullptr) {
@@ -48,7 +55,6 @@ public:
         }
         delete head_node;
     }
-
     /* insert v into the list */
     void insert(T v) {
         node<T>* pred = head_node;
@@ -120,7 +126,6 @@ public:
     std::size_t count(T v) {
         std::size_t cnt = 0;
         node<T>* pred = head_node;
-        // Lock the predecessor (dummy head) to start traversal
         pred->hold.lock();
         
         node<T>* current = pred->next;
