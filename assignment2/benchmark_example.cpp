@@ -5,7 +5,19 @@
 #include <string>
 
 #include "benchmark.hpp"
-#include "sorted_list_05.hpp"
+#if defined(USE_1)
+#include "ex4_01.hpp"
+#elif defined(USE_2)
+#include "ex4_02.hpp"
+#elif defined(USE_3)
+#include "ex4_03.hpp"
+#elif defined(USE_4)
+#include "ex4_04.hpp"
+#elif defined(USE_5)
+#include "ex4_05.hpp"
+#else
+#include "ex4_01.hpp"
+#endif
 
 static const int DATA_VALUE_RANGE_MIN = 0;
 static const int DATA_VALUE_RANGE_MAX = 256;
