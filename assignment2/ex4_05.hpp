@@ -1,7 +1,7 @@
 #ifndef lacpp_sorted_list_hpp
 #define lacpp_sorted_list_hpp lacpp_sorted_list_hpp
 
-#include "locks.hpp" // Contains CLHLock and CLHNode
+#include "ex4_locks.hpp" // Contains CLHLock and CLHNode
 
 template<typename T>
 struct node {
