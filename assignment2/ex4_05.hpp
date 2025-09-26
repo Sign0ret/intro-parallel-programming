@@ -1,13 +1,13 @@
 #ifndef lacpp_sorted_list_hpp
 #define lacpp_sorted_list_hpp lacpp_sorted_list_hpp
 
-#include "ex4_locks.hpp" // Contains CLHLock and CLHNode
+#include "ex4_locks.hpp" 
 
 template<typename T>
 struct node {
     T value;
     node<T>* next;
-    CLHLock lock;  // Each node has its own CLHLock (not just pointer)
+    CLHLock lock;  
     
     node(T v = T{}) : value(v), next(nullptr), lock() {}
 };
@@ -19,7 +19,7 @@ private:
 
 public:
     sorted_list() {
-        head_node = new node<T>();  // Dummy head with default value
+        head_node = new node<T>();  
         head_node->next = nullptr;
     }
 
@@ -55,7 +55,6 @@ public:
             }
         }
 
-        // Insert new node between pred and curr
         node<T>* new_node = new node<T>(v);
         new_node->next = curr;
         pred->next = new_node;
@@ -100,9 +99,6 @@ public:
 
     std::size_t count(T v) {
         std::size_t cnt = 0;
-
-        // Counting is read-only, ideally lock-free or shared lock
-        // But for simplicity (and correctness) we lock nodes one by one
 
         node<T>* curr = head_node->next;
         CLHNode* curr_lock = nullptr;
