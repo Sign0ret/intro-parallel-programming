@@ -1,4 +1,3 @@
-// Fine Grained Locking using std::mutex.
 #ifndef lacpp_sorted_list_hpp
 #define lacpp_sorted_list_hpp lacpp_sorted_list_hpp
 #include <mutex>
@@ -101,14 +100,11 @@ public:
         }
 
         if (curr != nullptr && curr->value == v) {
-            // Found the node to remove
             pred->next = curr->next;
             
-            // Unlock `curr` and then `pred`
-            curr->hold.unlock();
             pred->hold.unlock();
             
-            delete curr;
+            delete curr; 
         } else {
             // Value not found, unlock any held mutexes
             if (curr) curr->hold.unlock();
