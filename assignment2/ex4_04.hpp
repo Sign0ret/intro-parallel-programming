@@ -14,16 +14,14 @@ template<typename T>
 struct node {
     T value;
     node<T>* next;
-    // Each node has its own TATAS lock for fine-grained locking.
     TATASLock hold;
 };
 
-/* concurrent sorted singly-linked list with fine-grained TATAS locking */
+/* non-concurrent sorted singly-linked list */
 template<typename T>
 class sorted_list {
 private:
-    // A dummy head node is used to simplify the logic,
-    // eliminating the need for special-case handling of the `first` pointer.
+    // A dummy head node simplify logic
     node<T>* head_node;
 
 public:
@@ -57,14 +55,14 @@ public:
     /* insert v into the list */
     void insert(T v) {
         node<T>* pred = head_node;
-        pred->hold.lock(); // Lock the predecessor (initially the dummy head)
+        pred->hold.lock(); 
 
         node<T>* curr = pred->next;
         if (curr) {
-            curr->hold.lock(); // Lock the successor (the first real node)
+            curr->hold.lock();
         }
         
-        // Hand-over-hand traversal: Lock the next node before unlocking the previous
+        // Hand-over-hand traversal
         while (curr != nullptr && curr->value < v) {
             pred->hold.unlock();
             pred = curr;
@@ -78,10 +76,8 @@ public:
         new_node->value = v;
         new_node->next = curr;
         
-        // The list modification is protected by `pred`'s lock
         pred->next = new_node;
         
-        // Unlock the two nodes in reverse order of acquisition to avoid deadlock
         if (curr) curr->hold.unlock();
         pred->hold.unlock();
     }
@@ -89,11 +85,10 @@ public:
     /* remove one copy of the specified value */
     void remove(T v) {
         node<T>* pred = head_node;
-        pred->hold.lock(); // Lock the predecessor (initially the dummy head)
-
+        pred->hold.lock(); 
         node<T>* curr = pred->next;
         if (curr) {
-            curr->hold.lock(); // Lock the successor (the first real node)
+            curr->hold.lock(); 
         }
         
         while (curr != nullptr && curr->value < v) {
@@ -106,16 +101,13 @@ public:
         }
 
         if (curr != nullptr && curr->value == v) {
-            // Found the node to remove
             pred->next = curr->next;
             
-            // Unlock `curr` and then `pred`
             curr->hold.unlock();
             pred->hold.unlock();
             
             delete curr;
         } else {
-            // Value not found, unlock any held mutexes
             if (curr) curr->hold.unlock();
             pred->hold.unlock();
         }
@@ -145,7 +137,6 @@ public:
             if(current) current->hold.lock();
         }
         
-        // Unlock remaining locks
         if (current) current->hold.unlock();
         pred->hold.unlock();
 

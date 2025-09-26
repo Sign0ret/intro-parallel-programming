@@ -12,7 +12,6 @@ template<typename T>
 struct node {
     T value;
     node<T>* next;
-    // Each node has its own std::mutex for fine-grained locking.
     std::mutex hold;
 };
 
@@ -20,8 +19,7 @@ struct node {
 template<typename T>
 class sorted_list {
 private:
-    // A dummy head node is used to simplify the logic,
-    // eliminating the need for special-case handling of the `first` pointer.
+    // dummy head node to simplify 
     node<T>* head_node;
 
 public:
@@ -30,14 +28,22 @@ public:
         head_node->next = nullptr;
     }
     
-    // Defaulted constructors and operators for the class,
-    // assuming they handle member `head_node` correctly if needed.
+    /* default implementations:
+	* default constructor
+	* copy constructor (note: shallow copy)
+	* move constructor
+	* copy assignment operator (note: shallow copy)
+	* move assignment operator
+	*
+	* The first is required due to the others,
+	* which are explicitly listed due to the rule of five.
+	*/
+
     sorted_list(const sorted_list<T>& other) = default;
     sorted_list(sorted_list<T>&& other) = default;
     sorted_list<T>& operator=(const sorted_list<T>& other) = default;
     sorted_list<T>& operator=(sorted_list<T>&& other) = default;
 
-    // Explicitly handle destructor to avoid memory leaks.
     ~sorted_list() {
         node<T>* current = head_node->next;
         while(current != nullptr) {
@@ -51,14 +57,14 @@ public:
     /* insert v into the list */
     void insert(T v) {
         node<T>* pred = head_node;
-        pred->hold.lock(); // Lock the predecessor (initially the dummy head)
+        pred->hold.lock(); // Lock the predecessor & initially the dummy head
 
         node<T>* curr = pred->next;
         if (curr) {
-            curr->hold.lock(); // Lock the successor (the first real node)
+            curr->hold.lock(); // Lock the succesor
         }
         
-        // Hand-over-hand traversal: Lock the next node before unlocking the previous
+        // Hand-over-hand traversal
         while (curr != nullptr && curr->value < v) {
             pred->hold.unlock();
             pred = curr;
@@ -72,10 +78,9 @@ public:
         new_node->value = v;
         new_node->next = curr;
         
-        // The list modification is protected by `pred`'s lock
         pred->next = new_node;
         
-        // Unlock the two nodes in reverse order of acquisition to avoid deadlock
+        // unlock to avoid deadlock
         if (curr) curr->hold.unlock();
         pred->hold.unlock();
     }
@@ -83,11 +88,11 @@ public:
     /* remove one copy of the specified value */
     void remove(T v) {
         node<T>* pred = head_node;
-        pred->hold.lock(); // Lock the predecessor (initially the dummy head)
+        pred->hold.lock(); 
 
         node<T>* curr = pred->next;
         if (curr) {
-            curr->hold.lock(); // Lock the successor (the first real node)
+            curr->hold.lock(); 
         }
         
         while (curr != nullptr && curr->value < v) {
@@ -106,7 +111,6 @@ public:
             
             delete curr; 
         } else {
-            // Value not found, unlock any held mutexes
             if (curr) curr->hold.unlock();
             pred->hold.unlock();
         }
@@ -116,7 +120,6 @@ public:
     std::size_t count(T v) {
         std::size_t cnt = 0;
         node<T>* pred = head_node;
-        // Lock the predecessor (dummy head) to start traversal
         pred->hold.lock();
         
         node<T>* current = pred->next;
@@ -137,7 +140,6 @@ public:
             if(current) current->hold.lock();
         }
         
-        // Unlock remaining locks
         if (current) current->hold.unlock();
         pred->hold.unlock();
 
